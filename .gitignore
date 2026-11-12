@@ -42,6 +42,7 @@ logs/
 # pytest 快取
 .pytest_cache/
 .pytest_tmp/
+.pytest_tmp-*/
 
 # Claude Code 本機設定
 .claude/
