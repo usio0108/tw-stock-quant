@@ -23,6 +23,8 @@ def screen_stock(ticker: str) -> dict:
         return {"ticker": ticker, **_blocked("source_error", raw["error"])}
     if raw.get("stale_adjust", False):
         return {"ticker": ticker, **evaluate_technical(pd.DataFrame(), stale_adjust=True)}
+    if raw.get("source_status") != "fresh":
+        return {"ticker": ticker, **_blocked("source_error", "行情來源未回新資料，只有庫存舊 K 線")}
     try:
         candles, volume = raw["candles"], raw["volume"]
         if [c["time"] for c in candles] != [v["time"] for v in volume]:

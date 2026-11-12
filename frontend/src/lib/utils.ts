@@ -28,6 +28,19 @@ export function formatTimeShort(iso: string): string {
   })
 }
 
+// 分時／分鐘 K 的 time 是「假 UTC」epoch（台北壁鐘時間當 UTC 編碼，見 intraday.py），
+// 必須用 UTC 解碼；用本地時區格式化會在台北多加 8 小時（09:00 變 17:00）。
+export function formatWallClockEpoch(epochSec: number): string {
+  return new Date(epochSec * 1000).toLocaleString("zh-TW", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "UTC",
+  })
+}
+
 // 純日期／月份字串（已經是 "2026-06-26"／"2026-06" 這種零填充格式），統一分隔符號成 "/"
 export function formatDate(dateStr: string): string {
   return dateStr.replaceAll("-", "/")

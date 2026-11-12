@@ -285,7 +285,11 @@ export function StockAnalysisView({ initialTicker }: { initialTicker: string }) 
               </span>
             </>
           )}
-          {!error && lastUpdated && (
+          {!error && data?.source_status === "cache_only" ? (
+            <span role="status" className="text-xs text-amber-400">
+              行情來源暫無回應，顯示本機庫存（資料至 {String(data.candles.at(-1)?.time ?? "—")}）
+            </span>
+          ) : !error && lastUpdated && (
             <span className="text-xs text-muted-foreground tabular-nums">
               更新於 {formatTimeShort(lastUpdated.toISOString())}
             </span>

@@ -120,7 +120,8 @@ def _prev_daily_close(ticker: str) -> float | None:
     return rows[-1]["close"]
 
 
-def _render(rows: list[dict], prev_close: float | None, stale_adjust: bool = False) -> dict:
+def _render(rows: list[dict], prev_close: float | None, stale_adjust: bool = False,
+            source_status: str = "fresh") -> dict:
     """row dicts → API 回傳 JSON。四捨五入到 2 位在這裡做（與舊行為一致）。
 
     prev_close 由呼叫端傳入（前一交易日收盤價，見 _prev_daily_close），不從 rows
@@ -128,6 +129,9 @@ def _render(rows: list[dict], prev_close: float | None, stale_adjust: bool = Fal
 
     stale_adjust=True 代表偵測到除權息但重抓失敗，這批價格仍是平移前的舊還原價，
     呼叫端（尤其是回測）應該知道這件事，不要當成正確資料用。
+
+    source_status="cache_only" 代表這次 yfinance 回空，回應全來自 SQLite 庫存：價格可能
+    停在上次成功抓取的那天，呼叫端不能把「取得回應的時間」當成資料更新時間。
     """
     candles = [
         {
@@ -154,6 +158,7 @@ def _render(rows: list[dict], prev_close: float | None, stale_adjust: bool = Fal
         "limit_up": limit_up,
         "limit_down": limit_down,
         "stale_adjust": stale_adjust,
+        "source_status": source_status,
     }
 
 
@@ -233,12 +238,13 @@ def _fetch_candles_persistent(ticker: str, period: str, interval: str) -> dict:
     new_rows = _yf_rows(ticker, interval, False, start=overlap_start)
 
     if not new_rows:
-        # 來源回空時保留庫存的已知品質狀態，不能讓待還原價格恢復為可用。
+        # 增量請求故意往回重疊 TAIL_OVERLAP 根，非交易日也會拿回舊棒；回空就是來源異常。
+        # 保留庫存的已知品質狀態（待還原價格不能恢復為可用），並標明這次沒有新資料。
         rows = store.rows_since(yft, interval, start_str)
         if not rows:
             return {"error": f"No data found for {yft}"}
         logger.warning("%s %s: yfinance 回空，以庫存 %d 根回應", yft, interval, len(rows))
-        return _render(rows, _prev_daily_close(ticker), stale_adjust=pending)
+        return _render(rows, _prev_daily_close(ticker), stale_adjust=pending, source_status="cache_only")
 
     stored_closes = store.closes_since(yft, interval, overlap_start)
     adjusted = any(

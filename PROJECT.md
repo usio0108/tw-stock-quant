@@ -133,6 +133,8 @@ Python 程式集中在 `backend/`：中台為 `backend/data_service/`，個股�
 
 踩坑：Windows 上 PATH 的 `python3` 常解析到 Microsoft Store 的 app-execution-alias stub，跑起來沒 stdout 也沒錯誤，只會讓呼叫端 `JSON.parse` 失敗——這就是改用 `uv run` 的原因，不要改回 `python3`。
 
+踩坑：pytest 的 `tmp_path` 預設寫 `%TEMP%\pytest-of-<user>`，沙箱／隔離 worktree（如 model-ladder 的 Codex worker）用受限身分會被 Windows 拒絕存取，`tmp_path` 測試全數無法啟動。`pyproject.toml` 已用 `addopts = "--basetemp=.pytest_tmp"` 固定放 repo 內（已 gitignore），不要移除；也不要改系統 `TEMP` 來繞，會連帶影響其他工具。
+
 twstock 股票代碼表會過期（新掛牌股票查不到名稱/產業別），需要時跑 `uv run python -c "import twstock; twstock.codes.fetch.__update_codes()"` 更新一次即可。twstock 用 PyPI 版（`>=1.5.1`），原本的本地 editable fork 已刪除。
 
 ## 已完成（快照）
@@ -250,7 +252,7 @@ OpenStock 的技術面摘要使用 TradingView 的嵌入 widget，不是可直�
 **lightweight-charts v5**
 - 單一 chart 多 pane：`chart.addSeries(Series, opts, paneIndex)`＋`chart.panes()[i].setHeight()`，crosshair 自動同步。
 - 標記用 `createSeriesMarkers(series, markers)`（不是舊版 `series.setMarkers`）。
-- 時間軸一律以 **UTC** 顯示：分鐘線要用「假 UTC」技巧 `calendar.timegm(ts.timetuple())`（把台北壁鐘時間欄位當 UTC 算 epoch），顯示出來才是台北時間。日/週/月線用日期字串不受影響。
+- 時間軸一律以 **UTC** 顯示：分鐘線要用「假 UTC」技巧 `calendar.timegm(ts.timetuple())`（把台北壁鐘時間欄位當 UTC 算 epoch），顯示出來才是台北時間。日/週/月線用日期字串不受影響。圖表以外要把這種 epoch 轉成文字時一律用 `formatWallClockEpoch`（UTC 解碼），用 `new Date()` 本地格式化會多 8 小時。
 - 縮放下限用 `lib/chart-zoom-bound.ts` 的 `boundChartZoom()` 依資料筆數動態算 `minBarSpacing`（不能寫死常數）＋`fixLeftEdge`/`fixRightEdge`。
 
 **資料層**

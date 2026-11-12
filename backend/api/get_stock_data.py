@@ -103,6 +103,8 @@ def main() -> None:
         "ticker": ticker,
         "name": _company_name(ticker),
         "stale_adjust": False,
+        # "cache_only"：來源這次回空，K 線停在庫存最後一根；前端據此提示，不顯示成剛更新
+        "source_status": raw["source_status"],
         "candles": candles,
         "volume": volume_data,
         "sma20": _to_tv(ind["sma20"], times),

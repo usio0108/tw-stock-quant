@@ -44,6 +44,8 @@ default-groups = ["dev", "research"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+# tmp_path 放 repo 內：系統 %TEMP%\pytest-of-<user> 在沙箱／隔離 worktree 會被 Windows 拒絕存取
+addopts = "--basetemp=.pytest_tmp"
 
 [tool.ruff]
 line-length = 100

@@ -58,14 +58,14 @@ export interface MarketIndicesData {
 // [真實] yfinance period=1d interval=1m，個股與大盤共用同一支 python 腳本
 
 export interface IntradayPoint {
-  time: number // unix timestamp（秒）
+  time: number // 假 UTC epoch（秒，台北壁鐘當 UTC）；格式化用 formatWallClockEpoch
   price: number
   avg_price: number // 累計均價線
   volume: number
 }
 
 export interface IntradaySeries {
-  prev_close: number // 用來畫平盤參考線
+  prev_close: number | null // 分鐘資料所屬交易日的前一交易日收盤，畫平盤線；取不到為 null
   points: IntradayPoint[]
 }
 
@@ -160,6 +160,8 @@ export interface StockData {
   ticker: string
   name: string
   stale_adjust: false // true 時 API 回 503 與錯誤訊息，不提供舊價格／指標。
+  // cache_only：來源這次回空，K 線停在本機庫存最後一根，不能當成剛更新的行情
+  source_status: "fresh" | "cache_only"
   candles: Candle[]
   volume: VolumeBar[]
   sma20: TimeValue[]
