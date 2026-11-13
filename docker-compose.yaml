@@ -18,6 +18,17 @@ services:
       start_period: 15s
       retries: 3
 
+  securities-sync:
+    # 啟動時先同步一次（新部署不必等到半夜），之後每天台北 02:00（= UTC 18:00，容器時鐘為 UTC）
+    container_name: tw-stock-quant-securities-sync
+    image: tw-stock-quant:latest
+    init: true
+    restart: unless-stopped
+    working_dir: /app
+    command: ["sh", "-c", "while true; do python -m backend.data.securities_sync; sleep $$(( (64800 - $$(date +%s) % 86400 + 86400) % 86400 )); done"]
+    volumes:
+      - stock-data:/app/data
+
   frontend:
     container_name: tw-stock-quant-frontend
     image: tw-stock-quant:latest

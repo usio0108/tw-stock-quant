@@ -49,14 +49,14 @@ ROE 與三個月營收門檻未符合，F-score 為 2025 年度 5/9，研究條�
 
 | 想問的問題 | 回查位置 |
 |---|---|
-| 資料從哪裡來、五類資料如何查、token 怎麼設定 | [中台合約](../backend/data_service/README.md#基本面原始資料) |
+| 資料從哪裡來、五類資料如何查、token 怎麼設定 | [中台合約](../../backend/data_service/README.md#基本面原始資料) |
 | 怎麼知道資料有差異、哪些已解決或待查 | [核對紀錄](fundamental-data-review.md)；backend/data/fundamental_references.json |
 | EPS／ROE／YoY／F-score 怎麼算 | 本文件下方公式；backend/indicators/fundamental.py |
 | 門檻、期間、缺值與品質如何影響結果 | 本文件下方品質說明；backend/screening/fundamental.py |
 | 終端機如何取資料與呼叫計算 | backend/api/check_fundamentals.py、backend/api/screen_fundamental.py |
 | 前端如何接線 | frontend/src/app/api/stock/[ticker]/fundamentals/route.ts；frontend/src/components/stock/fundamental-panel.tsx |
 | 完整長債與普通股發行怎麼補 | backend/data/fundamental_supplements.json；下方年度補充規則 |
-| 系統整體狀態及接下來缺什麼 | [PROJECT.md](../PROJECT.md)、[todo.md](../todo.md) |
+| 系統整體狀態及接下來缺什麼 | [ARCHITECTURE.md](../../ARCHITECTURE.md)、[todo.md](../../todo.md) |
 
 當次功能驗收的 Python 測試、TypeScript 與正式前端建置通過；目前測試請執行 `uv run pytest -q`。瀏覽器驗證 6488 實際數值、
 桌面與 375px 無橫向溢出、來源失敗／重試、6488→2330→2317 搜尋切換不殘留分數。
@@ -81,7 +81,7 @@ profile 與研究區塊各自載入，任一來源失敗不遮掉另一區；切
 
 ## 三項基本條件
 
-門檻沿用 plan.md，不新增權重。
+門檻沿用 [ARCHITECTURE.md](../../ARCHITECTURE.md) 第二層，不新增權重。
 
 | 條件 | 本版定義與限制 |
 |---|---|

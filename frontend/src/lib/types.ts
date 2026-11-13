@@ -1,6 +1,6 @@
 // 這份檔案是 Dashboard 所有 API 的合約，也是未來真正後端要回傳的形狀。
 // Phase 9 換成真正後端時，只要回傳形狀符合這裡的定義，前端元件完全不用改。
-// 詳見 PROJECT.md「API 合約原則」。
+// 詳見 NOTES.md「API 合約原則」。
 //
 // 每個 interface 上方都標註資料來源：
 //   [真實]  現在就是真資料（yfinance / twstock，免金鑰，建皮期間直接接）
@@ -49,7 +49,7 @@ export interface GlobalIndex {
 export interface MarketIndicesData {
   taiex: IndexQuote | null // 加權指數（^TWII）
   // 櫃買指數：yfinance 的 ^TWOII 已查不到資料，目前一律是 null，UI 顯示「—」。
-  // 拿不到就回 null，不捏造 0——見 PROJECT.md「真實 vs mock 對照」的資料誠實原則。
+  // 拿不到就回 null，不捏造 0——見 NOTES.md「資料誠實三條規則」。
   otc: IndexQuote | null
   global: GlobalIndex[]
 }
@@ -58,19 +58,19 @@ export interface MarketIndicesData {
 // [真實] yfinance period=1d interval=1m，個股與大盤共用同一支 python 腳本
 
 export interface IntradayPoint {
-  time: number // unix timestamp（秒）
+  time: number // 假 UTC epoch（秒，台北壁鐘當 UTC）；格式化用 formatWallClockEpoch
   price: number
   avg_price: number // 累計均價線
   volume: number
 }
 
 export interface IntradaySeries {
-  prev_close: number // 用來畫平盤參考線
+  prev_close: number | null // 分鐘資料所屬交易日的前一交易日收盤，畫平盤線；取不到為 null
   points: IntradayPoint[]
 }
 
 // ─── /api/market/futures ────────────────────────────────────────────────────────
-// [mock] 台指期、外資未平倉——plan.md 目前沒有規劃期貨資料來源，要另外找（如券商 API），先 mock
+// [mock] 台指期、外資未平倉——ARCHITECTURE.md 目前沒有規劃期貨資料來源，要另外找（如券商 API），先 mock
 
 export interface FuturesData {
   tx_price: number // 台指期近月價格
@@ -160,6 +160,8 @@ export interface StockData {
   ticker: string
   name: string
   stale_adjust: false // true 時 API 回 503 與錯誤訊息，不提供舊價格／指標。
+  // cache_only：來源這次回空，K 線停在本機庫存最後一根，不能當成剛更新的行情
+  source_status: "fresh" | "cache_only"
   candles: Candle[]
   volume: VolumeBar[]
   sma20: TimeValue[]

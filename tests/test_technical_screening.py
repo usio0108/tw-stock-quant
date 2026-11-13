@@ -197,6 +197,7 @@ def test_cli_adapter_uses_daily_service_and_excludes_current_day(candles):
             {"time": time.date().isoformat(), "value": row["volume"]}
             for time, row in candles.iterrows()
         ],
+        "source_status": "fresh",
     }
     with patch("backend.api.screen_stock._fetch_candles", return_value=raw) as fetch:
         result = screen_stock("6488")
@@ -215,4 +216,7 @@ def test_adapter_source_failures_do_not_become_scores():
     with patch("backend.api.screen_stock._fetch_candles", return_value={"stale_adjust": True}):
         assert screen_stock("6488")["status"] == "stale_adjustment"
     with patch("backend.api.screen_stock._fetch_candles", return_value={"error": "not found"}):
+        assert screen_stock("6488")["status"] == "source_error"
+    with patch("backend.api.screen_stock._fetch_candles",
+               return_value={"source_status": "cache_only", "candles": [], "volume": []}):
         assert screen_stock("6488")["status"] == "source_error"

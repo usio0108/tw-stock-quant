@@ -3,10 +3,8 @@
 import argparse
 import json
 
-import twstock
-
 from backend.api.check_fundamentals import fetch_fundamental_data
-from backend.data.universe import yahoo_symbol
+from backend.data.universe import security, yahoo_symbol
 from backend.screening.fundamental import evaluate_fundamental
 
 
@@ -17,7 +15,7 @@ def screen_fundamental(ticker: str) -> dict:
         return {"ticker": ticker, "status": "invalid_data", "passed": None, "reason": str(error)}
     raw = {name: fetch_fundamental_data(ticker, name)
            for name in ("income_statement", "balance_sheet", "cash_flow", "monthly_revenue")}
-    return evaluate_fundamental(raw, industry=twstock.codes[ticker].group)
+    return evaluate_fundamental(raw, industry=security(ticker)["industry"])
 
 
 if __name__ == "__main__":

@@ -44,8 +44,8 @@ Copy `.env.example` to `.env` if needed. Keys are optional; FinMind uses anonymo
 Source layout: `frontend/` contains the Next.js UI and Route Handlers;
 `backend/api/` contains Python stock calculations; `backend/data_service/`
 contains the FastAPI service, market sources and caches. Docker/Compose entry
-files remain at the root. See [Architecture](docs/ARCHITECTURE.md) for the directory
-map and exported interactive diagram.
+files remain at the root. See [Architecture](ARCHITECTURE.md) for the directory
+map and the planned overall architecture.
 
 A web-based analysis dashboard built with **Next.js 16 + Tailwind v4 + shadcn/ui + TradingView lightweight-charts**, served alongside a Python data layer.
 
@@ -57,22 +57,22 @@ A web-based analysis dashboard built with **Next.js 16 + Tailwind v4 + shadcn/ui
 | 3 | Market overview page — indices (real), institutional flows/breadth/rankings/futures/news (mocked pending Phase 1/4/5/6 backend) | ✅ Done |
 | 4 | Weekly screening results page — sortable table, portfolio allocation pie chart, CSV export (mock data) | ✅ Done |
 | 5 | Polish pass — dark theme hardcoded (dropped `next-themes`, no light variant needed), responsive sidebar (mobile bottom nav / tablet icon-bar / desktop full width), mobile layout fixes at 375px, chart zoom lower-bound (can't zoom past the actual data span), unified `zh-TW` date/time formatting, red-up/green-down color audit; follow-up UI/UX accessibility audit — contrast fixes, 44px touch targets, aria-labels/aria-sort, restored the emerald brand accent color | ✅ Done |
-
 | 6 | Watchlist + live refresh — iOS-Stocks-style watchlist with intraday sparklines (stored in browser localStorage), background auto-refresh matching the data tier's cache TTLs (30s quotes / 60s K-line, paused while the tab is hidden), stock landing page with gainer/loser rankings, ticker **and company-name** keyword search with autocomplete, and an explicit "ticker not found" state | ✅ Done |
+| 7 | Data reference page (`/docs`, 資料參考書) — beginner-friendly catalog of every number, chart and table on the site: what it observes, actual source, unit, cache TTL, caveats, and a real / estimated / sample-data badge. Includes a sticky table of contents and client-side search; the content lives in `frontend/src/lib/data-sources.ts` | ✅ Done |
 
-The stock page includes expandable indicator definitions, timeframe explanations and KD/ATR charts and cards. Missing readings show “—”; failed price adjustments stop calculations and return HTTP 503 until data recovers. Historical indicator validation included Python tests, a native Node indicator check, production/Docker builds, and desktop/mobile browser checks. Run `uv run pytest -q` for the current Python suite. See [indicator review](docs/indicator-review.md) for numerical comparisons and platform differences.
+The stock page includes expandable indicator definitions, timeframe explanations and KD/ATR charts and cards. Missing readings show “—”; failed price adjustments stop calculations and return HTTP 503 until data recovers. Historical indicator validation included Python tests, a native Node indicator check, production/Docker builds, and desktop/mobile browser checks. Run `uv run pytest -q` for the current Python suite. See [indicator review](docs/reference/indicator-review.md) for numerical comparisons and platform differences.
 
-See [PROJECT.md](PROJECT.md) for the full real-vs-mock data inventory per field.
+See [ARCHITECTURE.md](ARCHITECTURE.md#五真實-vs-mock-資料對照) for the full real-vs-mock data inventory per field.
 
 Sample sections must show a visible "示範資料" marker. A sample market stance or allocation is not a calculated recommendation. Missing values from real sources display "—".
 
 ### Architecture: data tier / frontend / backend
 
-Run `uv run python -m backend.api.check_fundamentals 2330` to report actual periods and known discrepancies against manual references. Unknown data stays unverified; this is a quality report, not a screening result. See [data quality](docs/fundamental-data-review.md).
-Run `uv run python -m backend.api.screen_fundamental 6488` for four quarterly EPS values, TTM ROE, three monthly revenue YoY values and nine F-score signals. Reviewed company filings supplement debt and equity issuance for 2330, 6488, 2409 and 3481 in 2025/2024; other company/years keep missing values. Final verified pass remains null. See [calculation definitions](docs/fundamental-screening.md).
+Run `uv run python -m backend.api.check_fundamentals 2330` to report actual periods and known discrepancies against manual references. Unknown data stays unverified; this is a quality report, not a screening result. See [data quality](docs/reference/fundamental-data-review.md).
+Run `uv run python -m backend.api.screen_fundamental 6488` for four quarterly EPS values, TTM ROE, three monthly revenue YoY values and nine F-score signals. Reviewed company filings supplement debt and equity issuance for 2330, 6488, 2409 and 3481 in 2025/2024; other company/years keep missing values. Final verified pass remains null. See [calculation definitions](docs/reference/fundamental-screening.md).
 The stock Fundamentals tab now shows these metrics, expandable F-score signals, real six-month revenue and data periods/quality. It identifies manually reviewed annual inputs and handles unavailable data and retries. The weekly screening page still uses sample data. The guide includes formulas, commands, source evidence and validation limits.
 
-Run `uv run python -m backend.api.audit_financials 2409 3481 1303 --year 2025` to fetch official annual filings through the data tier, compare available borrowing/bond amounts with FinMind and group exceptions. Use `--all` for the local ordinary-stock universe. Official documents are versioned in SQLite and cached for 24 hours; screening remains blocked. See [batch verification](docs/fundamental-data-review.md#官方年度文件批次查證).
+Run `uv run python -m backend.api.audit_financials 2409 3481 1303 --year 2025` to fetch official annual filings through the data tier, compare available borrowing/bond amounts with FinMind and group exceptions. Use `--all` for the local ordinary-stock universe. Official documents are versioned in SQLite and cached for 24 hours; screening remains blocked. See [batch verification](docs/reference/fundamental-data-review.md#官方年度文件批次查證).
 
 Audit reports include two years of ordinary-share movements and opening/change/closing reconciliation. A positive ordinary-share issuance fact is retained as evidence; missing issuance rows or unchanged capital do not prove that no shares were issued. These reports do not update F-score supplements.
 
@@ -130,11 +130,13 @@ docker compose -p tw-stock-quant exec -T frontend python - < scripts/check_deplo
 
 This optional full smoke check requires a reachable market data source.
 
-The stock universe and market suffix resolver share the installed `twstock.codes`
-snapshot. Candles, intraday data, profiles and SQLite keys use `.TW` for TWSE and
+The stock universe and market suffix resolver share one list: the official TWSE ISIN
+lists (listed and OTC) synced daily by the `securities-sync` service into the permanent
+SQLite file `data/market.db`, falling back to the installed `twstock.codes` snapshot
+when that table is empty. Candles, intraday data, profiles and SQLite keys use `.TW` for TWSE and
 `.TWO` for TPEX. Search and the universe include ordinary shares only; known ETFs
 remain available through direct requests. Unknown or unsupported market codes
-return 404 instead of guessing an exchange. New listings require an updated code table.
+return 404 instead of guessing an exchange. New listings appear after the next sync.
 
 ```bash
 uv run python -m backend.data.universe
@@ -154,13 +156,13 @@ Single-stock daily technical screening is available through
 It returns five rule results, a 0–100 rule-match score and explicit unavailable-data
 states. The CLI excludes today's bar, including after market close; inspect `as_of`.
 It does not replace the sample screening page or provide a validated trading strategy.
-See [technical screening v1](docs/technical-screening.md) for rules and Docker commands.
+See [technical screening v1](docs/reference/technical-screening.md) for rules and Docker commands.
 
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 0 | Environment setup | ✅ Done |
 | 1 | Data pipeline — full-market scan | Universe + TWSE/TPEX routing implemented; SQLite already available. Bulk scanning and rate control remain. |
-| 2 | Technical indicators | Implemented and connected, including KD/ATR, help and adjustment-quality handling. Reference checks pass; exact broker-screen matching requires identical source data — see [indicator review](docs/indicator-review.md). |
+| 2 | Technical indicators | Implemented and connected, including KD/ATR, help and adjustment-quality handling. Reference checks pass; exact broker-screen matching requires identical source data — see [indicator review](docs/reference/indicator-review.md). |
 | 3 | Strategy backtesting (backtesting.py) | Teammate's scope (separate branch) |
 | 4 | Fundamental integration (FinMind) | Stock Fundamentals UI and real revenue connected; reviewed annual inputs complete F-score for four stocks, full-market verification pending |
 | 5 | Chip data + macro context (FinMind) | Pending |

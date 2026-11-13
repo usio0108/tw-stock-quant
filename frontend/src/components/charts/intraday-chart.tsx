@@ -16,6 +16,7 @@ import { boundChartZoom } from "@/lib/chart-zoom-bound"
 
 import { STOCK_UP, STOCK_DOWN } from "@/lib/chart-colors"
 
+const NEUTRAL = "#a1a1aa"
 const MAIN_H = 300
 const SUB_H = 100
 
@@ -28,9 +29,12 @@ export function IntradayChart({ data }: { data: IntradaySeries }) {
   useEffect(() => {
     if (!containerRef.current || !data.points.length) return
 
+    const { prev_close: prevClose } = data
     const lastPrice = data.points[data.points.length - 1].price
-    const isUp = lastPrice >= data.prev_close
-    const lineColor = isUp ? STOCK_UP : STOCK_DOWN
+    // 沒有前一交易日收盤就判斷不了漲跌，用中性色，不拿今日價當基準
+    const colorFor = (price: number) =>
+      prevClose == null ? NEUTRAL : price >= prevClose ? STOCK_UP : STOCK_DOWN
+    const lineColor = colorFor(lastPrice)
     const chartHeight = hasVolume ? MAIN_H + SUB_H : MAIN_H
 
     const chart = createChart(containerRef.current, {
@@ -65,14 +69,16 @@ export function IntradayChart({ data }: { data: IntradaySeries }) {
       lastValueVisible: true,
     }, 0)
     priceSeries.setData(data.points.map((p) => ({ time: p.time as UTCTimestamp, value: p.price })))
-    priceSeries.createPriceLine({
-      price: data.prev_close,
-      color: "#71717a",
-      lineWidth: 1,
-      lineStyle: LineStyle.Dashed,
-      axisLabelVisible: true,
-      title: "平盤",
-    })
+    if (prevClose != null) {
+      priceSeries.createPriceLine({
+        price: prevClose,
+        color: "#71717a",
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: "平盤",
+      })
+    }
 
     const avgSeries = chart.addSeries(LineSeries, {
       color: "#F59E0B",
@@ -93,7 +99,7 @@ export function IntradayChart({ data }: { data: IntradaySeries }) {
         data.points.map((p) => ({
           time: p.time as UTCTimestamp,
           value: p.volume,
-          color: p.price >= data.prev_close ? STOCK_UP : STOCK_DOWN,
+          color: colorFor(p.price),
         }))
       )
     }

@@ -1,5 +1,5 @@
 """個股 raw 資料：K 線/成交量/基本面/五檔。只做「抓取」，不算 SMA/RSI/MACD 等指標
-（那些是後端該做的計算，見 PROJECT.md「架構：中台 / 前端 / 後端」）。
+（那些是後端該做的計算，見 ARCHITECTURE.md「一、三層架構：中台 / 前端 / 後端」）。
 搬自舊 backend/api/{get_stock_data,get_stock_profile,get_orderbook}.py。
 """
 import calendar
@@ -11,7 +11,7 @@ import pandas as pd
 import twstock
 import yfinance as yf
 
-from backend.data.universe import stock_universe, yahoo_symbol
+from backend.data.universe import security, stock_universe, yahoo_symbol
 from backend.data_service import store
 from backend.data_service.cache import ttl_cache
 
@@ -25,7 +25,7 @@ if not logger.handlers:  # uvicorn 不會幫 app logger 接 handler，自己接�
 
 INTRADAY_INTERVALS = {"1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h"}
 
-# 只有「歷史」K 線落地 SQLite（設計見 plan.md Phase 1a）；分鐘 K 屬即時，維持純記憶體
+# 只有「歷史」K 線落地 SQLite（設計見 NOTES.md 資料層踩坑）；分鐘 K 屬即時，維持純記憶體
 PERSIST_INTERVALS = {"1d", "1wk", "1mo"}
 
 # 增量抓取時故意往回多抓的重疊根數：重疊處 close 對不上 → 除權息還原價平移了
@@ -120,7 +120,8 @@ def _prev_daily_close(ticker: str) -> float | None:
     return rows[-1]["close"]
 
 
-def _render(rows: list[dict], prev_close: float | None, stale_adjust: bool = False) -> dict:
+def _render(rows: list[dict], prev_close: float | None, stale_adjust: bool = False,
+            source_status: str = "fresh") -> dict:
     """row dicts → API 回傳 JSON。四捨五入到 2 位在這裡做（與舊行為一致）。
 
     prev_close 由呼叫端傳入（前一交易日收盤價，見 _prev_daily_close），不從 rows
@@ -128,6 +129,9 @@ def _render(rows: list[dict], prev_close: float | None, stale_adjust: bool = Fal
 
     stale_adjust=True 代表偵測到除權息但重抓失敗，這批價格仍是平移前的舊還原價，
     呼叫端（尤其是回測）應該知道這件事，不要當成正確資料用。
+
+    source_status="cache_only" 代表這次 yfinance 回空，回應全來自 SQLite 庫存：價格可能
+    停在上次成功抓取的那天，呼叫端不能把「取得回應的時間」當成資料更新時間。
     """
     candles = [
         {
@@ -154,6 +158,7 @@ def _render(rows: list[dict], prev_close: float | None, stale_adjust: bool = Fal
         "limit_up": limit_up,
         "limit_down": limit_down,
         "stale_adjust": stale_adjust,
+        "source_status": source_status,
     }
 
 
@@ -203,7 +208,7 @@ def _maybe_record_source_start(
 
 def _fetch_candles_persistent(ticker: str, period: str, interval: str) -> dict:
     """日/週/月 K 的三步查找：SQLite 查已存區間 → 只跟 yfinance 要缺口 → upsert 回存。
-    設計（含除權息偵測）見 plan.md Phase 1a。"""
+    設計（含除權息偵測）見 NOTES.md 資料層踩坑。"""
     yft = yahoo_symbol(ticker)
     cutoff = _period_cutoff(period)
     start_str = _serve_start(cutoff, interval) if cutoff is not None else None
@@ -233,12 +238,13 @@ def _fetch_candles_persistent(ticker: str, period: str, interval: str) -> dict:
     new_rows = _yf_rows(ticker, interval, False, start=overlap_start)
 
     if not new_rows:
-        # 來源回空時保留庫存的已知品質狀態，不能讓待還原價格恢復為可用。
+        # 增量請求故意往回重疊 TAIL_OVERLAP 根，非交易日也會拿回舊棒；回空就是來源異常。
+        # 保留庫存的已知品質狀態（待還原價格不能恢復為可用），並標明這次沒有新資料。
         rows = store.rows_since(yft, interval, start_str)
         if not rows:
             return {"error": f"No data found for {yft}"}
         logger.warning("%s %s: yfinance 回空，以庫存 %d 根回應", yft, interval, len(rows))
-        return _render(rows, _prev_daily_close(ticker), stale_adjust=pending)
+        return _render(rows, _prev_daily_close(ticker), stale_adjust=pending, source_status="cache_only")
 
     stored_closes = store.closes_since(yft, interval, overlap_start)
     adjusted = any(
@@ -291,9 +297,9 @@ def fetch_candles(ticker: str, period: str, interval: str) -> dict:
 
 @ttl_cache(seconds=3600)
 def _stock_index() -> list[tuple[str, str]]:
-    """(代碼, 名稱) 清單，只留一般股票，排除權證/ETF/特別股等——twstock.codes 裡
-    41000+ 筆多數是權證，全部搜尋會回一堆使用者用不到的雜訊。twstock 代碼表本身
-    可能過期（新掛牌查不到），跟 get_stock_data.py 的 _company_name() 用同一份表。
+    """(代碼, 名稱) 清單，只留一般股票，排除權證/ETF/特別股等，避免搜尋回一堆雜訊。
+    來源是 universe.stock_universe()（market.db，沒資料時退回 twstock 快照，後者可能過期），
+    跟 get_stock_data.py 的 _company_name() 用同一份資料。
     """
     return [(s["ticker"], s["name"]) for s in stock_universe()]
 
@@ -321,13 +327,13 @@ def search_stocks(query: str, limit: int = 8) -> list[dict]:
 
 @ttl_cache(seconds=1800)
 def fetch_profile(ticker: str) -> dict:
-    """產業別/上市櫃別來自 twstock（本地查表），其餘來自 yfinance .info。
+    """產業別/上市櫃別來自 universe.security()（本地查表），其餘來自 yfinance .info。
     月營收與研究結果由獨立 fundamentals 入口提供。
     """
     symbol = yahoo_symbol(ticker)
-    code_info = twstock.codes[ticker]
-    industry = code_info.group
-    listed_market = code_info.market
+    code_info = security(ticker)
+    industry = code_info["industry"]
+    listed_market = code_info["market"]
 
     info = yf.Ticker(symbol).info
 

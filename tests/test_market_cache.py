@@ -37,6 +37,21 @@ def test_failed_adjustment_stays_blocked_until_full_history_is_restored(tmp_path
     assert all(row["close"] == 90 for row in recovered["candles"])
 
 
+def test_empty_source_serves_cache_but_says_so(tmp_path, monkeypatch):
+    monkeypatch.setattr(store, "DB_PATH", tmp_path / "cache.db")
+    monkeypatch.setattr(stock, "_prev_daily_close", lambda ticker: 100)
+    old = [{"time": f"2026-10-{day:02d}", "open": 100, "high": 101,
+            "low": 99, "close": 100, "volume": 1000} for day in range(12, 17)]
+    store.upsert("2330.TW", "1d", old)
+    store.record_source_start("2330.TW", "1d", old[0]["time"])
+    responses = iter([old, []])
+    monkeypatch.setattr(stock, "_yf_rows", lambda *args, **kwargs: next(responses))
+    assert stock._fetch_candles_persistent("2330", "max", "1d")["source_status"] == "fresh"
+    cached = stock._fetch_candles_persistent("2330", "max", "1d")
+    assert cached["source_status"] == "cache_only"
+    assert cached["candles"][-1]["time"] == "2026-10-16"
+
+
 def test_adjustment_invalidates_other_cached_display_periods(tmp_path, monkeypatch):
     monkeypatch.setattr(store, "DB_PATH", tmp_path / "cache.db")
     monkeypatch.setattr(stock, "_prev_daily_close", lambda ticker: 100)

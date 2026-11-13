@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { formatTimeShort } from "@/lib/utils"
+import { formatWallClockEpoch } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { IntradayChart } from "@/components/charts/intraday-chart"
 import type { IntradaySeries } from "@/lib/types"
@@ -33,7 +33,7 @@ export function MarketIntradaySection({ refreshKey }: { refreshKey: number }) {
       {error && <div className="h-50 flex items-center justify-center text-muted-foreground text-sm">暫時無法載入分時走勢（非交易時段可能沒有今日資料）</div>}
       {!error && !data && <Skeleton className="h-100 w-full bg-zinc-900" />}
       {!error && data && <>
-        <p className="text-xs text-muted-foreground mb-2">資料時間 {lastPoint ? formatTimeShort(new Date(lastPoint.time * 1000).toISOString()) : "—"}</p>
+        <p className="text-xs text-muted-foreground mb-2">資料時間 {lastPoint ? formatWallClockEpoch(lastPoint.time) : "—"}</p>
         <IntradayChart data={data} />
       </>}
     </div>

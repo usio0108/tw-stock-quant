@@ -2,13 +2,14 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ChevronLeft, ChevronRight, BarChart2, LineChart, ListFilter, Star } from "lucide-react"
+import { ChevronLeft, ChevronRight, BarChart2, BookOpen, LineChart, ListFilter, Star } from "lucide-react"
 
 const navItems = [
   { label: "市場總覽", href: "/market",     match: "/market",    icon: BarChart2 },
   { label: "個股分析", href: "/stock",      match: "/stock",     icon: LineChart },
   { label: "自選股",   href: "/watchlist",  match: "/watchlist", icon: Star },
   { label: "每週選股", href: "/screening",  match: "/screening", icon: ListFilter },
+  { label: "資料參考書", href: "/docs",     match: "/docs",      icon: BookOpen },
 ]
 
 export function Sidebar() {

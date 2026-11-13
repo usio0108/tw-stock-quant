@@ -6,7 +6,7 @@
 //
 // 注意：這組是「圖表」用色。畫面上的**文字**漲跌色另外用 Tailwind 的
 // `text-red-400` / `text-emerald-400`，那是依 WCAG 對比度實測選出來的值，
-// 跟這裡的圖表色刻意不同，不要為了「統一」而互相取代（見 PROJECT.md 前端慣例）。
+// 跟這裡的圖表色刻意不同，不要為了「統一」而互相取代（見 NOTES.md 前端慣例）。
 
 // 台股慣例：紅漲綠跌（跟美股的 green-up / red-down 相反）
 export const STOCK_UP = "#EF5350" // 漲：紅
@@ -16,7 +16,7 @@ export const STOCK_DOWN = "#26A69A" // 跌：綠
 export const MA_SHORT = "#F59E0B"
 export const MA_LONG = "#3B82F6"
 
-// RSI 門檻線：PROJECT.md 明訂「非方向性顏色不套紅漲綠跌」。色碼目前與漲跌色相同，
+// RSI 門檻線：NOTES.md 明訂「非方向性顏色不套紅漲綠跌」。色碼目前與漲跌色相同，
 // 但語意不同（這是超買/超賣的水平參考線，不是漲跌方向），所以獨立命名——
 // 未來調整漲跌配色時不應該連帶改動這兩條線。
 export const RSI_OVERBOUGHT = "#EF5350"

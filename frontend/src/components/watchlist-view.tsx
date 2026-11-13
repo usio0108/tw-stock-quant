@@ -117,6 +117,9 @@ export function WatchlistView() {
         </p>
       </div>
 
+      {Object.values(rows).some((r) => r.stock?.source_status === "cache_only") && (
+        <p role="status" className="text-xs text-amber-400">部分股票行情來源暫無回應，價格是本機庫存的最後一筆，不是最新行情。</p>
+      )}
       {saveError && <p role="alert" className="text-sm text-amber-400">無法儲存自選股，請檢查瀏覽器儲存空間或權限。</p>}
       {tickers.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 py-16 text-center border border-dashed border-zinc-800 rounded-lg">

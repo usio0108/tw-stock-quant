@@ -1,56 +1,47 @@
 # 待辦
 
-> Dashboard 建皮（Step 0–5）已全部完成，成果見 `PROJECT.md`。Phase 1–8 細節見 `plan.md`。
+> 現況以本檔為準：上半是目前階段計畫，下半是任務清單。規劃架構見 [ARCHITECTURE.md](ARCHITECTURE.md)，決策與踩坑見 [NOTES.md](NOTES.md)。
 > 分工（2026-07-23 與隊友確認）：隊友 branch 只做**回測系統**；技術指標、選股評分、投組優化歸本專案。
+
+## 目前階段計畫
+
+Dashboard 建皮（Step 0–5）已全部完成；目前在自建計算層（指標 → 評分 → 優化）。Phase 維持水平順序推進 1→2→…→6（2026-09-22 決定）。
+
+| Phase | 內容（對應四層框架） | 狀態 |
+|-------|---------------------|------|
+| 1 資料管線 | 中台快取持久化、股票清單、`yahoo_symbol()`、FinMind 原始資料入口 ✅；批次掃描與頻率控制 ⬜ | 🟡 |
+| 2 技術指標（第四層） | `backend.indicators.add_indicators`、KD／ATR、型態、還原失敗 503 已由 [PR #7](https://github.com/neilyonglu/tw-stock-quant/pull/7) 合併；券商逐筆比對 ⬜ | ✅（比對待做） |
+| 3 策略回測 | 隊友範圍：`backend/strategies/`、`backend/backtest/`，必含交易成本 | ⬜（隊友 branch） |
+| 4 基本面整合（第二層） | FinMind 原始資料、TTM ROE／營收 YoY／F-score、四項研究門檻與前端呈現 ✅；FCF／Altman、全市場完整名單 ⬜ | 🟡 |
+| 5 籌碼面與總體環境（第一、三層） | 法人買賣超、融資券、景氣燈號、USD/TWD、美債、漲跌家數 → `macro/context.py`、`screening/chip.py` | ⬜ |
+| 6 選股系統、投組優化與排程 | 單股技術篩選 ✅；批次掃描、綜合評分、`portfolio/optimizer.py`、`alerts/`、GitHub Actions 排程、Telegram 推播 ⬜ | 🟡 |
+| 7 因子分析與事件研究 | alphalens-reloaded 看 IC/IR；自建事件研究（市場模型 OLS → AR → CAR → t 檢定），驗收如「外資連買 5 日後 10 日平均 CAR」 | ⬜ |
+| 8 情緒面（選配） | pytrends 搜尋熱度；PTT 情緒用 Claude API 判斷正負；併入 scorer 低權重 | ⬜ |
+| 9 Dashboard 接真資料與部署 | 前端 mock 欄位換真（依賴 Phase 1/4/5/6）；Docker Compose＋self-hosted runner 部署 ✅（見 [維護文件](docs/MAINTAINERS.md)） | 🟡 |
+
+各 Phase 驗收：
+- Phase 1：能穩定拿到資料、批次掃描不打爆外部 API（twstock 對 TWSE 每 5 秒最多 3 request，批次要 sleep；FinMind 免費 600 req/hr）。抓取一律經中台，`backend/` 不直打外部來源。
+- Phase 3：2330 跑 2020–2025 回測，輸出交易紀錄與績效摘要；optimizer 小心 overfitting；手續費買賣各 0.1425%、賣出證交稅 0.3%（ETF 0.1%）。
+- Phase 4：能從全市場篩出基本面合格的候選清單。
+- Phase 5：同一支股票在不同總體環境下排名不同。
+- Phase 6：一行指令輸出本週推薦清單＋配置比例（單股上限 20%），並推播 Telegram。
+
+## 下一個任務
+
+- [ ] **股票資料來源稽核落地**：依 [docs/stock-data-audit.md](docs/stock-data-audit.md) 的盤點與建議逐項處理，並在動手前先確認哪些來源要換、哪些維持（稽核報告本身不改）。
+  - [x] S01 股票清單：改用證交所 ISIN 上市／上櫃清單，存 `data/market.db`（`securities`／`securities_changes`／`fetch_log`），`securities-sync` 服務每日更新，無資料時退回 twstock
+  - [ ] S02 以後各項（日 K、分鐘 K、漲跌停、估值、財報、月營收、股利、指數）尚未處理；公司 API 名稱交叉核對與 live 同步驗收也待做
 
 ## 現在就可以做（不依賴隊友）
 
-- [x] 全庫審查後修正行情 Decimal 價格、還原失敗狀態持久化與跨週期快取失效、有界 TTL 快取、基本面未來月份及重複財報攔截，並同步現況文件（2026-10-21）。
-- [x] 前端審查 FE-01–07：市場環境標示示範、分時／五檔刷新與時間、選股失敗重試、自選股儲存失敗提示、換股網址同步、刷新保留 K 線視窗及搜尋無障礙；固定 API 測試資料的 Chrome 互動驗收通過（2026-10-21）。
-- [x] Python 目錄統一為 backend/api 與 backend/data_service，更新啟動／Docker／測試路徑；Archify 升級 3.1.0，架構說明見 docs/ARCHITECTURE.md
-- [x] 現有 main 的 Docker／CI／tw-stock runner 部署設定（獨立 feature/main-deployment 分支，不帶入指標新功能）
-- [x] main 雲端 CI 與 tw-stock runner 自動部署成功；容器改名 PR #5 已合併，2026-10-13 的 main run 38337855813 成功
-- [x] 目錄整理與架構圖 PR #6 已合併 main；本機與遠端 refactor/backend-layout 已刪除
-- [x] 中台快取持久化（SQLite）——2026-07-23 完成，最終狀態見 PROJECT.md 架構段
-- [x] 自選股清單＋市場/個股頁面定期自動刷新——2026-07-29 完成（branch `feature/watchlist-live-refresh`），最終狀態見 PROJECT.md
-- [x] 自選股頁改 App 風格（sparkline）＋個股首頁排行榜（示範資料）＋K 線今日按鈕——2026-07-29 完成，同上 branch，最終狀態見 PROJECT.md
-- [x] 查無股票代碼錯誤畫面＋股票關鍵字搜尋＋修切換代碼殘留舊資料 bug——2026-07-29 完成，同上 branch，最終狀態見 PROJECT.md
-- [x] 全 repo 稽核＋修掉三條「假資料看起來像真的」——2026-07-29 完成，同上 branch，最終狀態見 PROJECT.md
-- [x] 稽核其餘 11 項全部修完（白屏防護、漲跌停算錯、RSI 演算法、缺值語意、快取加鎖等）——2026-07-29 完成，同上 branch，最終狀態見 PROJECT.md
-- [x] Route Handler 改 `uv run` 執行 Python（Windows PATH 踩坑）——2026-09-20 完成，同上 branch；副作用：TA-Lib 環境障礙消失，見 PROJECT.md「Python 環境」
-- [x] `feature/watchlist-live-refresh` 已於 2026-09-22 經 PR #3 合併 main
-- [ ] 決定 `.agents/`（archify skill 本體）與 `skills-lock.json` 要進版控還是 `.gitignore`——目前是 untracked；隊友要共用同一份 skill 就 commit，否則 ignore 各自 `npx skills add`
-- [x] 個股頁指標說明、週期提示、缺值與位置判讀修正；收尾後共 23 個 Python 測試、Node 檢查與桌面／手機驗證通過
-- [x] 指標收尾：KD／ATR 圖表與速查、還原失敗 503／隱藏／恢復、23 項測試及公開算法／參考數值對照；詳見 docs/indicator-review.md
-- [ ] 指定券商畫面逐筆驗收：需同批行情與還原／週期／起始時間設定；目前已記錄算法差異，不宣稱各平台預設值相同
-- [x] `feature/indicators-module`（Phase 2）完成 rebase、驗證及推送，已開 [PR #7](https://github.com/neilyonglu/tw-stock-quant/pull/7)
-  - 指標與測試已適配 backend/indicators，Python 改以 backend.api.get_stock_data 模組執行。
-  - 保留 main 的 Docker／CI 設定，排除原分支上重複的舊部署提交。
-  - CI 改跑 pytest，涵蓋指標測試與既有個股 JSON／資料庫位置檢查。
-- [x] PR #7 已合併 main，遠端與本機 feature/indicators-module 已刪除
-- [ ] 確認 PR #7 合併版本的 main CI 與 server 部署結果（與功能測試分開驗收）
-- [x] `feature/stock-universe`：共用一般股票清單與 `.TW`／`.TWO` 解析，涵蓋 K 線／分時／基本面／快取鍵；31 項測試與兩市場實際來源、Docker smoke check 通過
-- [x] `feature/stock-universe` 經 PR #8 合併 main，本機與遠端分支已刪除；server 部署另依 Actions 驗收
-- [x] `feature/technical-screening`：單股日 K 技術規則、分數、各項理由、真實交叉與品質阻擋；55 項測試、2330／6488 真實中台與正式 Docker CLI 通過
-- [x] technical-screening 已經 PR #9 合併 main，遠端分支已刪除
-- [ ] 確認 PR #9 的 main CI／server 部署結果；本機已合併的舊 technical-screening 分支尚待清理
-- [x] `feature/fundamental-data`：中台接入 FinMind 三張財報、月營收與股利；73 項測試及 2330／6488 五類真實 HTTP 資料驗證通過，快照只留本機 data/raw
-- [x] 基本面品質檢查與 CLI：依人工公告標示待更新／待核對／尚未驗證，保留實際期間、比較精度與來源，不覆寫原始值或假判合格
-- [x] 基本面研究計算：TTM ROE、四季 EPS、三月營收 YoY、四項門檻與理由及 F-score 九項純計算；104 項測試與兩檔 CLI／Docker 通過，passed 仍為 null
-- [x] 6488 2025 Q4 EPS 4.61 用正式年度／前三季累計 EPS 及歸母淨利差額核對，修正人工參考，不覆寫原始值
-- [x] 2330／6488 2025／2024 年度 F-score 缺項用官方合併財報人工核對補齊，保留長債組成／發行證據／來源／日期，其他股票與年度不沿用
-- [x] 官方年度財報批次取得／SQLite 原件快取／FinMind 借款及公司債比對／合併例外報告；優先驗證友達、群創、南亞，未自動補值或完成全市場 F-score
-- [x] 普通股年度變動證據：保留兩年度完整普通股維度明細與勾稽、抽取明確增資事件；五家十年度實際核對，環球晶 2024 增資可辨識，未由缺列或股本不變判定未發行
-- [x] 友達／群創 2025／2024 完整官方合併 PDF 核對零公司債、非流動借款／租賃及未發行母公司普通股；逐筆來源 SHA／頁碼／日期入補充表，兩檔 2025 年度九項齊備且均為 7／9，原始 XBRL 缺值仍不自動改零
-- [ ] 擴大可靠年度資料來源與自動更新，處理金融業模型及全市場完整已驗證基本面名單；目前不是所有股票都有完整 F-score
-- [x] 2330 2026 Q2 營收改用完整核閱財報參考值，與 FinMind 精確相符；公告警示區分業績摘要與完整核閱財報，115 項測試與實際 API 驗證通過
-- [x] 2330 公告自動追蹤：最近兩季業績公告及最近四個月營收公告，依公告日期截止；保留 raw、null、人工參考，公告已出但資料未更新時保守標示 `pending_update`。`scripts.check_announcements` 通過，實際抓取兩類均 available：2026-09-30 業績期於 2026-10-15 公布、2026-09 營收於 2026-10-08 公布
-- [x] 擴充 2409／6488／3481 官方近期公告追蹤，區分日期／期間、GWC 6488／SAS 5483 及業績摘要／完整報表；3481 改用官方 EN/ir 近期新聞 API（空白 year），驗證欄位及文章來源。讀取上限 4,000,000 bytes、逾時 5 秒；修正 GWC Q1 正文寫法誤判。152 項 pytest、checker 與四家八組實際抓取皆 available（2026-10-22）；近期 feed 不保證歷史完整。
-- [ ] 基本面資料核對後續：自動公告支援 2330／2409／6488／3481 四家近期來源，其他股票仍 unsupported；近期頁不保證歷史或月報連續完整。Q3 業績摘要已公布但 FinMind 目前僅 Q2，最新期別條件仍暫不判定。全市場公告追蹤、可靠年度資料來源與自動更新、金融業模型及全市場完整已驗證基本面名單仍未完成；見 docs/fundamental-data-review.md
-- [x] 修正 profile 零 EPS／殖利率與非有限數值；基本面前端接真實六個月營收／YoY、四季 EPS、ROE、F-score／九項訊號、資料品質與來源；110 項測試與前端建置、桌面／手機／失敗重試／切股驗證通過
 - [ ] 基於股票清單做批次掃描與頻率控制，批次套用已完成的單股技術規則；尚未產生全市場真實排行榜或多因子評分
-- [ ] 選股評分與投組優化（Phase 藍圖見 plan.md）；完成後 `/api/screening` mock 換真、`frontend/src/lib/types.ts` 合約對齊
-- [ ] 前端剩餘 mock 欄位換真實 API：三大法人、市場廣度、排行榜、籌碼 Tab 等（完整清單見 PROJECT.md 真實 vs mock 對照表；依賴各 Phase 資料源接入）
+- [ ] 選股評分與投組優化；完成後 `/api/screening` mock 換真、`frontend/src/lib/types.ts` 合約對齊
+- [ ] 前端剩餘 mock 欄位換真實 API：三大法人、市場廣度、排行榜、籌碼 Tab 等（完整清單見 [ARCHITECTURE.md](ARCHITECTURE.md#五真實-vs-mock-資料對照)；依賴各 Phase 資料源接入）
+- [ ] 指定券商畫面逐筆驗收：需同批 OHLCV、還原、週期、起始時間與參數；目前已記錄算法差異，不宣稱各平台預設值相同（見 [指標驗證](docs/reference/indicator-review.md)）
+- [ ] 確認 PR #7、#9 合併版本的 main CI 與 server 部署結果（與功能測試分開驗收）；本機已合併的舊 technical-screening 分支尚待清理
+- [ ] 決定 `.agents/`（架構圖 skill 本體）與 `skills-lock.json` 要進版控還是 `.gitignore`；架構圖已刪除，若不再使用可直接移除
+- [ ] 基本面後續：擴大可靠年度資料來源與自動更新、金融業模型、全市場完整已驗證名單與 FCF 轉換率／Altman Z-score；公告自動追蹤目前只支援 2330／2409／6488／3481，Q3 業績摘要已公布但 FinMind 目前僅 Q2，最新期別條件仍暫不判定（見 [基本面資料核對](docs/reference/fundamental-data-review.md)）
+- [ ] 找櫃買指數的替代資料源（TPEx OpenAPI）——yfinance `^TWOII` 已失效，目前中台回 `null`、UI 顯示「—」
 - [ ] `main.py` 能單獨跑完整選股流程並推播 Telegram（依賴指標＋評分完成）
 - [ ] GitHub Actions workflow 骨架：建 `.github/workflows/weekly_scan.yml`
 
@@ -78,20 +69,26 @@
 - [ ] `backend/alerts/scheduler.py`（Phase 6 建立時）定位為本機測試用，正式排程走 GitHub Actions
 - [ ] GitHub Actions 手動觸發驗收（依賴 `main.py` 完整流程）
 
-## 稽核發現（2026-07-29 全 repo 稽核）
-
-三條「假資料看起來像真的」與其餘 11 項全部處理完畢，最終狀態見 PROJECT.md。
-唯一保留為待辦的是需要新資料源的那條：
-
-- [ ] 找櫃買指數的替代資料源（TPEx OpenAPI）——yfinance `^TWOII` 已失效（實測 `^TWOII`/`^TWO`/`^TPEX` 全回 0 筆），目前中台回 `null`、UI 誠實顯示「—」
-
 ## 待隊友回測 branch merge（合回 main 時逐項核對）
 
-> 2026-09-22 盤點：remote 上沒有隊友的 branch（只有 `dashboard-ui`、`cache-persistence`、`watchlist-live-refresh` 三條都是自己的），回測進度不明——先問一下她推到哪裡了。
+> 2026-09-22 盤點：remote 上沒有隊友的 branch（只有自己的 `dashboard-ui`、`cache-persistence`、`watchlist-live-refresh`），回測進度不明——先問一下她推到哪裡了。
 
-- [ ] 核對她的 branch 與 `backend/` 的指標/評分/優化模組**沒有重複實作**——有重疊先商量再 merge，不要兩份並存
-- [ ] 回測模組接入選股流程（輸入輸出合約對齊；回測結果必含交易成本，費率見 docs/taiwan-market-notes.md）
+- [ ] 核對她的 branch 與 `backend/` 的指標／評分／優化模組**沒有重複實作**——有重疊先商量再 merge，不要兩份並存
+- [ ] 回測模組接入選股流程（輸入輸出合約對齊；回測結果必含交易成本，費率見 [taiwan-market-notes](docs/reference/taiwan-market-notes.md)）
 
 ## 刻意不做（避免範圍無限擴大）
 
-看盤平台常見但暫不跟進：同類股/概念股比較、注意股/處置股清單、社群討論/多空投票、警示燈號標記。
+看盤平台常見但暫不跟進：同類股／概念股比較、注意股／處置股清單、社群討論／多空投票、警示燈號標記。另見 [ARCHITECTURE.md](ARCHITECTURE.md#七考量區參考尚未採用2026-10-16) 的考量區（尚未採用）。
+
+## 已完成（摘要，細節在 git 歷史）
+
+- 環境與 Dashboard 建皮：Python 3.12＋uv、TA-Lib、twstock；三頁介面、六層 K 線、7 種週期、個股 Tabs、五檔、選股表與 CSV、響應式（2026-06 ～ 07）；無障礙稽核修正（2026-07-04）。
+- 中台拆分（2026-07-01）、前端 Dashboard 併入 main（PR #1，2026-07-22）、中台 SQLite 快取持久化（2026-07-23）。
+- 自選股清單／自動刷新／App 風格列表／排行榜示範頁／查無代碼畫面／股票關鍵字搜尋（共用 `ticker-search.tsx`）（2026-07-29，PR #3 合併）。
+- 全 repo 稽核（2026-07-29）：修掉三條「假資料看起來像真的」與其餘 11 項（漲跌停、Wilder RSI、白屏防護、race condition、缺值語意、快取加鎖等）；全庫審查與前端審查 FE-01–07 於 2026-10-21 完成。
+- Route Handler 改用 `uv run` 執行 Python（2026-09-20）；Python 目錄統一為 `backend/api` 與 `backend/data_service`；PR #6 目錄整理已合併。
+- Docker／CI／`tw-stock` runner 部署（PR #5 容器改名已合併，2026-10-13 main run 38337855813 成功）。
+- 指標模組（PR #7）：KD／ATR、型態、`stale_adjust` 503／隱藏／恢復，23 項測試與公開算法／參考數值對照。
+- 股票清單與 `.TW`／`.TWO` 解析（PR #8）：K 線／分時／基本面／快取鍵共用，31 項測試與兩市場 Docker smoke check。
+- 單股技術篩選 technical-v1（PR #9）：55 項測試、2330／6488 真實中台與 Docker CLI 通過。
+- 基本面（`feature/fundamental-data`）：中台接入 FinMind 五類原始資料；品質檢查 CLI、TTM ROE／四季 EPS／營收 YoY／F-score 研究計算；官方年度財報批次查證與 SQLite 原件快取；2330／6488／2409／3481 的 2025／2024 年度 F-score 缺項由官方合併財報人工核對補齊；公告自動追蹤四家；個股基本面前端接真實六個月營收／YoY、四季 EPS、ROE、F-score 與資料品質；整體 passed 仍為 null。
