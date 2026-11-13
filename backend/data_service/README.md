@@ -1,7 +1,7 @@
 # 資料中台（data_service）
 
 負責向外部來源（yfinance、twstock、FinMind）抓取 + 記憶體 TTL 快取資料，前端與後端都跟這裡要資料，
-不要自己重打外部 API。完整背景見 [../../PROJECT.md](../../PROJECT.md)「架構：中台 / 前端 / 後端」。
+不要自己重打外部 API。完整背景見 [../../ARCHITECTURE.md](../../ARCHITECTURE.md)「一、三層架構：中台 / 前端 / 後端」。
 
 ## 啟動
 
@@ -71,7 +71,7 @@ uv run --env-file .env uvicorn backend.data_service.main:app --reload --port 800
 匿名額度耗盡或授權失敗會明確回報，不保證永久免金鑰可用。原 `/profile`、
 前端月營收透過獨立研究入口換真，選股頁仍為多因子示範；本中台入口仍只回 raw。
 資料定義見 [FinMind 官方文件](https://finmind.github.io/tutor/TaiwanMarket/Fundamental/)。
-兩市場官方公告抽查結果與已發現差異見 [基本面資料核對](../../docs/fundamental-data-review.md)；
+兩市場官方公告抽查結果與已發現差異見 [基本面資料核對](../../docs/reference/fundamental-data-review.md)；
 原始入口尚未自動辨識公告更新延遲或阻擋跨來源差異，計算前必須處理這些限制。
 計算層現提供 `uv run python -m backend.api.check_fundamentals 2330`，依人工查核紀錄回報
 已知更新落後與數值差異；不改此 raw 合約，也不把未驗證資料當已通過篩選。
@@ -151,4 +151,4 @@ uv run --env-file .env uvicorn backend.data_service.main:app --reload --port 800
 上游拒絕／限流回 503、逾時 504、其他取得失敗 502，不轉傳上游敏感訊息。
 原件保存 `data/cache.db`，沿用既有 Docker data volume。
 此路由不比對 FinMind、不計算指標；批次比對由後端 CLI 執行。
-詳細限制及用法見 [官方年度文件批次查證](../../docs/fundamental-data-review.md#官方年度文件批次查證)。
+詳細限制及用法見 [官方年度文件批次查證](../../docs/reference/fundamental-data-review.md#官方年度文件批次查證)。

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { formatTimeShort } from "@/lib/utils"
+import { formatWallClockEpoch } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { IntradayChart } from "@/components/charts/intraday-chart"
 import type { IntradaySeries } from "@/lib/types"
@@ -36,9 +36,9 @@ export function IntradayTab({ ticker, refreshKey }: { ticker: string; refreshKey
   const lastPoint = data.points.at(-1)
   return (
     <div className="space-y-1.5">
-      <p className="text-xs text-muted-foreground">資料時間 {lastPoint ? formatTimeShort(new Date(lastPoint.time * 1000).toISOString()) : "—"}</p>
+      <p className="text-xs text-muted-foreground">資料時間 {lastPoint ? formatWallClockEpoch(lastPoint.time) : "—"}</p>
       <IntradayChart data={data} />
-      <p className="text-xs text-muted-foreground">橘線是累計成交均價；灰色虛線是平盤（昨日收盤價）參考線</p>
+      <p className="text-xs text-muted-foreground">橘線是累計成交均價；灰色虛線是平盤（前一交易日收盤價）參考線{data.prev_close == null && "；目前取不到前一交易日收盤，不畫平盤線"}</p>
     </div>
   )
 }

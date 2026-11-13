@@ -1,7 +1,7 @@
 # CI 與 server 部署
 
 GitHub 雲端 CI 用 `pytest -q` 執行完整離線測試，涵蓋指標、個股 JSON、上市櫃來源、快取及單股技術與基本面研究，再跑 production image build、image 內離線 Node 指標判讀檢查、容器健康檢查及前端到中台的搜尋請求。
-搜尋使用 twstock 本機代碼表，不把外部行情來源的暫時失敗當成 CI 失敗。
+搜尋使用 `data/market.db`（沒資料時退回 twstock 本機代碼表），測試一律隔離 market.db，不把外部行情來源的暫時失敗當成 CI 失敗。
 所有 push 都跑 CI；只有 main 的 CI 成功後會自動部署。PR 不會使用正式 server runner。
 
 | 項目 | 設定 |
@@ -33,7 +33,7 @@ docker compose -p tw-stock-quant ps
 3. 切換週期確認每根 K 棒時間提示，資料不足時顯示 —。今日分鐘線是否不足取決於當時實際資料根數。
 4. 控制欄看不到捲軸，仍能滾動至五檔報價。
 
-`stale_adjust` 是異常狀態，不需刻意改正式資料觸發；已有離線及本機測試中台驗證 503、舊資料隱藏與後續恢復。數值對照及限制見 [indicator-review.md](indicator-review.md)。
+`stale_adjust` 是異常狀態，不需刻意改正式資料觸發；已有離線及本機測試中台驗證 503、舊資料隱藏與後續恢復。數值對照及限制見 [indicator-review.md](reference/indicator-review.md)。
 
 離線檢查可在根目錄執行：
 
@@ -48,7 +48,7 @@ docker run --rm --network none --mount "type=bind,src=$PWD/frontend,dst=/checks,
 單股技術面篩選需運行中的中台，可執行 `uv run python -m backend.api.screen_stock 2330`，
 或 `docker compose exec -T -w /app frontend python -m backend.api.screen_stock 2330`。
 此功能尚未接到選股頁；JSON 分數為規則符合度，CLI 一律排除當日 K，需檢查 `as_of`。
-完整規則與狀態見 [technical-screening.md](technical-screening.md)。
+完整規則與狀態見 [technical-screening.md](reference/technical-screening.md)。
 
 ## Server 首次設定
 
@@ -102,7 +102,12 @@ docker compose -p tw-stock-quant exec -T frontend python - < scripts/check_deplo
 uv run python -m backend.data.universe
 ```
 
-數量隨 twstock 代碼表快照變動；新掛牌查不到時先檢查代碼表，不要靠改後綴猜市場。上櫃來源支援不等於已補齊櫃買指數 `^TWOII`，後者仍是獨立資料來源待辦。
+輸出的 `source` 會標示是 `market.db` 還是 `twstock`。新掛牌查不到時先看 `securities-sync` 服務是否成功（`docker compose logs securities-sync`，或查 market.db 的 `fetch_log`），不要靠改後綴猜市場。
+
+`securities-sync` 服務在容器啟動時與每天台北 02:00 從證交所 ISIN 清單更新 `data/market.db`；失敗或觸發安全閥（某市場零股票列、單市場將下架超過 5%）時不改動證券資料，只在 `fetch_log` 記 error。
+market.db 是永久資料，和 `cache.db` 一樣放在 `stock-data` volume，同樣不可用 `down -v` 刪除。可手動執行：`docker compose exec -T securities-sync python -m backend.data.securities_sync`。
+
+上櫃來源支援不等於已補齊櫃買指數 `^TWOII`，後者仍是獨立資料來源待辦。
 不要使用 `down -v`，它會刪除正式 SQLite volume。
 可在 Actions → Test and deploy stock dashboard → Run workflow 選 main 手動重跑。
 CI／部署是否可用以 GitHub 實際執行結果為準；workflow 推送成功不代表 server 已部署。

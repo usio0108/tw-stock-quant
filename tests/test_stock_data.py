@@ -32,7 +32,7 @@ class StockDataTest(unittest.TestCase):
         ]
         raw = {"candles": candles,
                "volume": [{"time": c["time"], "value": 1000, "color": "#EF5350"} for c in candles],
-               "limit_up": 198, "limit_down": 162}
+               "limit_up": 198, "limit_down": 162, "source_status": "fresh"}
         output = io.StringIO()
         with patch.object(stock_data, "_fetch_candles", return_value=raw), \
              patch("sys.argv", ["get_stock_data.py", "2330"]), redirect_stdout(output):

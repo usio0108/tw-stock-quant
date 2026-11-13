@@ -22,7 +22,7 @@ export const mockMarketData: MarketOverviewData = {
   environment: { verdict: "多頭", intensity: "積極" },
 }
 
-// 台指期貨——plan.md 沒有規劃資料來源，先 mock
+// 台指期貨——ARCHITECTURE.md 沒有規劃資料來源，先 mock
 export const mockFuturesData: FuturesData = {
   tx_price: 22480,
   tx_change: 35,

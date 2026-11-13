@@ -16,16 +16,16 @@ import urllib.error
 import urllib.request
 
 import pandas as pd
-import twstock
 
+from backend.data.universe import security
 from backend.indicators import add_indicators, detect_patterns, volume_ratio
 
 DATA_SERVICE_URL = os.environ.get("DATA_SERVICE_URL", "http://localhost:8001")
 
 
 def _company_name(ticker: str) -> str:
-    info = twstock.codes.get(ticker)
-    return info.name if info else ticker
+    info = security(ticker)
+    return info["name"] if info else ticker
 
 
 def _fetch_candles(ticker: str, period: str, interval: str) -> dict:
@@ -103,6 +103,8 @@ def main() -> None:
         "ticker": ticker,
         "name": _company_name(ticker),
         "stale_adjust": False,
+        # "cache_only"：來源這次回空，K 線停在庫存最後一根；前端據此提示，不顯示成剛更新
+        "source_status": raw["source_status"],
         "candles": candles,
         "volume": volume_data,
         "sma20": _to_tv(ind["sma20"], times),

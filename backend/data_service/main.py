@@ -2,7 +2,7 @@
 
 前端（顯示）和後端（計算，隊友另開 branch 開發）都跟這個服務要資料，不各自
 重新打外部 API——避免 API 延遲，也避免抓取邏輯重複造輪子。詳見
-PROJECT.md「架構：中台 / 前端 / 後端」。
+ARCHITECTURE.md「一、三層架構：中台 / 前端 / 後端」。
 
 本機啟動：uv run uvicorn backend.data_service.main:app --reload --port 8001
 """
